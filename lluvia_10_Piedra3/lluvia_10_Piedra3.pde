@@ -1,4 +1,5 @@
-//librerias
+//librerias //<>//
+import controlP5.*;
 import fisica.*;//importar libreria
 import gab.opencv.*;
 import gifAnimation.*;
@@ -11,27 +12,32 @@ FWorld mundo;// objeto del mundo de fisica
 FPoly poliPiedra;// poligono de piedra
 
 //declaracion de variables y elementos
-int cantidad=5;// cantidad de objetos que caen
-PImage src, dst; //piedra
+PImage piedraImagen, dst; //piedra
 ArrayList<Contour> contours; 
 ArrayList<Contour> polygons;
 
 ArrayList<Hombre> hombres;
 int cantidadDeHombres;
+float spawnFreq;
 
-PImage hombre; //png de hombre
-PImage hombredoblado;//png de hombre doblado
+//PImage hombre; //png de hombre
+//PImage hombredoblado;//png de hombre doblado
 int selectedContour = 0;
 float velocity= 0;
 
-void setup()
-{
-  size(500, 800);
+//Gif[] hombresGifs;
 
+ControlP5 controlGui;
+boolean debugMode;
 
-  src = loadImage("piedra2.jpg");// sube imagenes de piedra
+void setup() {
+  size(550, 900);
+  frameRate(30);
 
-  opencv = new OpenCV(this, src);//open cv sistema para detectar umbral de contraste
+  debugMode = false;
+  piedraImagen = loadImage("piedra2_vertical_2.png");// sube imagenes de piedra
+
+  opencv = new OpenCV(this, piedraImagen);//open cv sistema para detectar umbral de contraste
   opencv.gray();
   opencv.threshold(240);
   dst = opencv.getOutput();
@@ -39,22 +45,37 @@ void setup()
   contours = opencv.findContours();
   println("found " + contours.size() + " contours");
 
-  cantidadDeHombres = 300;
+  cantidadDeHombres = 150;
   hombres = new ArrayList<Hombre>();
+  spawnFreq = 4;
 
-  hombre = loadImage( "hombre.png" );//llamo a las imagenes que van a llover
-  hombredoblado = loadImage( "hombredoblado.png" );
+  //hombre = loadImage( "hombre.png" );//llamo a las imagenes que van a llover
+  //hombredoblado = loadImage( "hombredoblado.png" );
+
+  /*
+  hombresGifs = new Gif[3];
+   for (int i=0; i < hombresGifs.length; i++) {
+   hombresGifs[i] = new Gif(this, "hombre_" + i + ".gif");
+   }
+   */
 
 
   Fisica.init(this);//Metodo que inicia el mundo fisica
   mundo = new FWorld();//constructor
   mundo.setGravity(0, 500);//Metodo que setea la fuerza de gravedad del objeto
-  mundo.setEdges(3);
+  mundo.setEdges(3, -200, width - 3, height + 3);
 
-  crearCuerpoDeLaPiedra(); // llamo a la funcion que arma el poligono de la piedra
+  //crearCuerpoDeLaPiedra(); // llamo a la funcion que arma el poligono de la piedra
 
-    noFill();
-  stroke(255, 128, 0);
+  selectedContour = 26;
+  try {
+    crearCuerpoDeLaPiedra();
+  } 
+  catch (Exception e) {
+    println("NO SE DETECTA UN CONTORNO VALIDO PARA LA PIEDRA");
+  }
+
+  createGUI();
 }
 
 
@@ -63,19 +84,20 @@ void draw()
   background(0);
 
   imageMode(CORNER);
-  image(src, 0, 0); //dibuja la imagen de la piedra
+  image(piedraImagen, 0, 0); //dibuja la imagen de la piedra
   imageMode(CENTER);
 
   mundo.step(); // actualizo el objeto mundo
   //mundo.draw();//dibujo objeto mundo
-  //mundo.drawDebug(); ///para ver el poligono y los parametros de las cajas
+
+  if (debugMode)mundo.drawDebug(); ///para ver el poligono y los parametros de las cajas
 
 
   noFill();
   strokeWeight(3);
 
-  //dibuja a los hombres cayendo 
-  if (frameCount % 60 == 0 && hombres.size() < cantidadDeHombres) {
+  //CREAR a los hombres cayendo  (suponiendo que el framerate se mantiene en 30fps)
+  if (frameCount % floor(spawnFreq * 30) == 0 && hombres.size() < cantidadDeHombres) {
     crearHombre();
   }
 
@@ -94,12 +116,26 @@ void draw()
       }
     }
   }
-  //Cuando cambio la imagen de la piedra, llamo funcion que detecta los contornos para ver si estoy sekleccionando el contorno correcto
-  //contourselection ();
-  
-  fill(255,0,0);
-  text("FrameRate: " + frameRate, 10,10);
-  text("Cantidad de Hombrecitos: " + hombres.size(), 10, 30);
+
+  if (debugMode) {
+    textSize(15);
+    fill(0, 200);
+    noStroke();
+    rect(0, 0, width, 150);
+
+    fill(255);
+    text("CONTORNO DE SELECCIONADO:  " + selectedContour, 20, 90);
+    text("FRAMERATE:     " + nf(frameRate, 0, 1), 20, 140);
+    text("CANTIDAD DE HOMBRECITOS:     " + hombres.size() + "/" + cantidadDeHombres, 20, 120);
+
+
+    //  Cuando cambio la imagen de la piedra, llamo funcion que detecta los contornos para ver si estoy sekleccionando el contorno correcto
+    contourselection();
+
+    // SHOW MOUSE COORDINATES
+    fill(255, 0, 0);
+    text("x" + mouseX + " | y"  + mouseY, mouseX + 2, mouseY - 2);
+  }
 }
 
 void crearHombre() {
@@ -108,20 +144,19 @@ void crearHombre() {
   // Y TAMBIEN SE CREA OBJETO FBox PARA CONTROLAR LOS FISICAS DEL HOMBRECITO
   // LOS 2 ESTAN VINCULADOS: bodyName = "0", hombre.get(0);
 
-
-  Gif nuevoGif = new Gif(this, "hombre.gif");
-  Hombre nuevoHombre = new Hombre(nuevoGif);
+  Gif animationToPass = new Gif(this, "hombre_" + floor(random(2.99)) + ".gif");
+  Hombre nuevoHombre = new Hombre(animationToPass);
   hombres.add(nuevoHombre);
 
   //creo un cuerpo circular
-  //FBox caja = new FBox( hombre.width * 0.25, hombre.height * 0.50 );
-  FCircle caja = new FCircle(15);
+  FBox caja = new FBox( 30, 15 );
+  //FCircle caja = new FCircle(20);
   caja.setName(Integer.toString(hombres.size() - 1));
   caja.setGrabbable(true);
   //caja.setVisible(false);
 
-  caja.setPosition( random( 0.1, width-0.1), 50 ); //ubicacion de salida
-  caja.addTorque(random(-5, 5)); //le da rotacion
+  caja.setPosition( random( 20, width-20), -100 ); //ubicacion de salida
+  caja.addTorque(random(-20, 20)); //le da rotacion
 
   //agrego el cuerpo al mundo
   mundo.add(caja);
@@ -182,13 +217,17 @@ void contactStarted(FContact contacto) { //se ejecuta cuando hay contacto
 
 void contourselection () { //declaro funcion
 
-    stroke(0, 255, 0);
+    stroke(255, 0, 0);
+  fill(255, 0, 0, 50);
   contours.get(selectedContour).draw();
 
-  noStroke();
-  fill(0, 255, 127);
+
   PVector punto1 = contours.get(selectedContour).getPolygonApproximation().getPoints().get(0);
-  text("Contorno :: " + selectedContour, punto1.x, punto1.y);
+  noStroke();
+  fill(0);
+  rect(punto1.x + 5, punto1.y + 8, 100, -20);
+  fill(0, 255, 127);
+  text("Contorno ->  " + selectedContour, punto1.x + 7, punto1.y);
 
   stroke(255, 0, 0);
   beginShape();
@@ -199,14 +238,25 @@ void contourselection () { //declaro funcion
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-void crearCuerpoDeLaPiedra() {//funcion que dibuja un poligono en la piedra
+void crearCuerpoDeLaPiedra() {
 
-    poliPiedra = new FPoly(); //tipo FPoly
+  // Primero, eliminar la piedra anterior
+  /*
+  ArrayList<FBody> bodies=mundo.getBodies();
+   for (FBody b : bodies) {
+   if (b.getName().equals("piedra")) {
+   b.removeFromWorld();
+   }
+   }
+   */
+
+  poliPiedra = new FPoly(); //tipo FPoly
   poliPiedra.setNoFill();
   //poliPiedra.setStroke(0, 0, 255);
   poliPiedra.setNoStroke();
+  poliPiedra.setName("piedra");
 
-  Contour contornoPiedra = contours.get(54); //numero del contorno que sale del debug
+  Contour contornoPiedra = contours.get(selectedContour); //numero del contorno que sale del debug
   int cantidadDePuntos = contornoPiedra.getPolygonApproximation().getPoints().size();
 
   for (int i=0; i < cantidadDePuntos; i++ ) {
@@ -220,6 +270,53 @@ void crearCuerpoDeLaPiedra() {//funcion que dibuja un poligono en la piedra
   // poliPiedra = null; // POR QUE LO ELIMINA? ACASO HACE UNA COPIA AL AGREGARLO AL WORLD
 }
 
+void createGUI() {
+  controlGui = new ControlP5(this);
+
+  controlGui.addButton("gui_previousContour").setPosition(50, 20).setSize(20, 20).setLabel("<");
+  controlGui.addButton("gui_nextContour").setPosition(90, 20).setSize(20, 20).setLabel(">");
+  controlGui.addButton("gui_setAsRockContour").setPosition(20, 50).setSize(120, 20).setLabel("Setear Cuerpo de Roca");
+
+  controlGui.addSlider("gui_spawnFrequency").setPosition(180, 20).setSize(100, 20).setRange(1, 15).setValue(4).setNumberOfTickMarks(15).showTickMarks(false).setLabel("Frecuencia de Creacion");
+  controlGui.addSlider("gui_reSpawnTime").setPosition(180, 50).setSize(100, 20).setRange(10, 120).setValue(120).setNumberOfTickMarks(111).showTickMarks(false).setLabel("Tiempo de Vida");
+
+  //controlGui.addButton("gui_reStart").setPosition(600, 100).setSize(20, 50).setLabel("LIMPIAR");
+
+  controlGui.hide();
+}
+
+void gui_previousContour() {
+  selectedContour--;
+  if (selectedContour < 0) {
+    selectedContour = contours.size() - 1;
+  }
+}
+void gui_nextContour() {
+  selectedContour++;
+  if (selectedContour >= contours.size()) {
+    selectedContour = 0;
+  }
+}
+
+void gui_setAsRockContour() {
+  crearCuerpoDeLaPiedra();
+}
+
+void gui_spawnFrequency(float value) {
+  spawnFreq = value;
+}
+
+void gui_reSpawnTime(float value) {
+  for (int i=0; i< hombres.size (); i++) {
+    hombres.get(i).setTimerDurationInSeconds(floor(value));
+  }
+}
+
+void gui_reStart() {
+  hombres.clear();
+  // FALTA LIMPIAR LOS FBodies
+}
+
 
 
 /////////////////////////////////////////////////////////////////////
@@ -227,13 +324,34 @@ void crearCuerpoDeLaPiedra() {//funcion que dibuja un poligono en la piedra
 void keyPressed() {
   //Elementos para recorrer el contorno y elegirlo con LEFT y RIGHT
   if (keyCode == RIGHT) {
-    selectedContour = abs((selectedContour + 1) % contours.size());
+    selectedContour++;
+    if (selectedContour >= contours.size()) {
+      selectedContour = 0;
+    }
     println(selectedContour);
   }
 
   if (keyCode == LEFT) {
-    selectedContour = abs((selectedContour - 1) % contours.size());
+    selectedContour--;
+    if (selectedContour < 0) {
+      selectedContour = contours.size() - 1;
+    }    
     println(selectedContour);
+  }
+
+  if (key == 'd' || key == 'D') {
+    debugMode = !debugMode;
+    if (debugMode) {
+      controlGui.show();
+      cursor();
+    } else {
+      controlGui.hide();
+      noCursor();
+    }
+  }
+
+  if (key == 'c' || key == 'C') {
+    crearHombre();
   }
 }
 

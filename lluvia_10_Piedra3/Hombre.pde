@@ -20,7 +20,7 @@ class Hombre {
     animacion.ignoreRepeat();
 
     timer = new Timer();
-    timer.setDurationInSeconds(60);
+    setTimerDurationInSeconds(120);
 
     reset();
   }
@@ -60,5 +60,9 @@ class Hombre {
 
   boolean terminoTimer() {
     return timer.isFinished();
+  }
+  
+  void setTimerDurationInSeconds(int seconds){
+    timer.setDurationInSeconds(seconds + (int(random(-20,20))));
   }
 }
