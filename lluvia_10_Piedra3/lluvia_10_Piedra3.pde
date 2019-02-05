@@ -37,7 +37,7 @@ boolean drawStoneMode;
 ArrayList<PVector> stoneVertices;
 
 void setup() {
-  size(1280, 720);
+  size(displayWidth, displayHeight);
   frameRate(30);
 
   debugMode = false;
@@ -71,7 +71,7 @@ void setup() {
 
 void draw()
 {
-  background(127);
+  background(230);
 
 
   mundo.step(); // actualizo el objeto mundo
@@ -143,7 +143,7 @@ void drawStoneShape(int mode) {
       stroke(255, 0, 0);
     } else {
       noStroke();
-      fill(0);
+      fill(230);
     }
 
     beginShape();
