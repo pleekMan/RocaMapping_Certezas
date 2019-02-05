@@ -1,4 +1,17 @@
-//librerias //<>//
+/* //<>//
+CONTROLES:
+ D =>  Entrar/Salir Modo Debug
+ P =>  Entrar/Salir Modo Dibujar Piedras (solo si estas en Modo Debug).
+ Al salir, confirmas la Piedra y se genera el Body para la libreria de Fisica
+ " " (barra espaciadora) o ClickMouse  => Agregar vertices a la Forma de Piedra
+ D =>  Borrar Piedra (Bug de a libreria: El body se elimina correctamente, pero queda la sombrita de la BodyFisica)
+ U =>  Borrar ultimo vertice hecho, mientras se esta construyendo la piedra.
+ ----
+ C => Lanzar un hombrecito
+ 
+ */
+
+//librerias
 import controlP5.*;
 import fisica.*;//importar libreria
 import gifAnimation.*;
@@ -24,7 +37,7 @@ boolean drawStoneMode;
 ArrayList<PVector> stoneVertices;
 
 void setup() {
-  size(550, 900);
+  size(1280, 720);
   frameRate(30);
 
   debugMode = false;
@@ -33,7 +46,7 @@ void setup() {
   stoneVertices = new ArrayList<PVector>();
 
 
-  cantidadDeHombres = 150;
+  cantidadDeHombres = 200;
   hombres = new ArrayList<Hombre>();
   spawnFreq = 4;
 
@@ -79,7 +92,7 @@ void draw()
     crearHombre();
   }
 
-
+  imageMode(CENTER);
   for (int i=0; i < hombres.size (); i++) {
     FBody bodyLinkeado = buscarBodyPorNombre(Integer.toString(i));
     if (bodyLinkeado != null) { // SI ES null, SIGNIFICA Q ES UN Body SIN NOMBRE ASIGNADO, COMO LA PIEDRA O LAS PAREDES
@@ -107,12 +120,14 @@ void draw()
 
     if (drawStoneMode) {
       fill(255, 0, 0);
-      text("> DIBUJANDO PIEDRA <", 20, 180);
+      text("> DIBUJANDO PIEDRA <", 20, 20);
     }
 
     // SHOW MOUSE COORDINATES
-    fill(255, 0, 0);
-    text("x" + mouseX + " | y"  + mouseY, mouseX + 2, mouseY - 2);
+    if (debugMode) {
+      fill(255, 0, 0);
+      text("x" + mouseX + " | y"  + mouseY, mouseX + 2, mouseY - 2);
+    }
   }
 }
 
@@ -132,7 +147,7 @@ void drawStoneShape(int mode) {
     }
 
     beginShape();
-    for (int i=0; i < stoneVertices.size(); i++) {
+    for (int i=0; i < stoneVertices.size (); i++) {
       vertex(stoneVertices.get(i).x, stoneVertices.get(i).y);
     }
     endShape(CLOSE);
@@ -187,7 +202,7 @@ FBody buscarBodyPorNombre(String bodyName) {
 //Funcion que detecta los contactos entre dos objetos o entre la piedra y algun objeto
 void contactStarted(FContact contacto) { //se ejecuta cuando hay contacto
 
-  // FOR BODY 1
+    // FOR BODY 1
   try {
     hombres.get(Integer.parseInt(contacto.getBody1().getName())).abolitarse();
   } 
@@ -231,7 +246,7 @@ void crearCuerpoDeLaPiedra() {
    */
 
   int cantidadDePuntos = stoneVertices.size();
-  if(cantidadDePuntos <= 0) return;
+  if (cantidadDePuntos <= 0) return;
 
   poliPiedra = new FPoly(); //tipo FPoly
   poliPiedra.setNoFill();
@@ -252,6 +267,15 @@ void crearCuerpoDeLaPiedra() {
 
   mundo.add(poliPiedra);
   // poliPiedra = null; // POR QUE LO ELIMINA? ACASO HACE UNA COPIA AL AGREGARLO AL WORLD
+}
+
+void borrarVerticesDePiedras() {
+  stoneVertices.clear();
+
+  FBody bodyPiedra = buscarBodyPorNombre("piedra");
+  if ( bodyPiedra != null) {
+    bodyPiedra.removeFromWorld();
+  }
 }
 
 void createGUI() {
@@ -285,7 +309,13 @@ void gui_reStart() {
   // FALTA LIMPIAR LOS FBodies
 }
 
-
+void mousePressed() {
+  if (debugMode) {
+    if (drawStoneMode) {
+      stoneVertices.add(new PVector(mouseX, mouseY));
+    }
+  }
+}
 
 /////////////////////////////////////////////////////////////////////
 
@@ -300,8 +330,26 @@ void keyPressed() {
   }
 
   if (key == 'p' || key == 'P') {
-    drawStoneMode = !drawStoneMode;
-    crearCuerpoDeLaPiedra();
+    if (debugMode) {
+      drawStoneMode = !drawStoneMode;
+      crearCuerpoDeLaPiedra();
+    }
+  }
+
+  if (key == 'b' || key == 'B') {
+    if (debugMode) {
+      borrarVerticesDePiedras();
+    }
+  }
+
+  if (key == 'u' || key == 'U') {
+    if (debugMode) {
+      if (drawStoneMode) {
+        if (stoneVertices.size() > 0) {
+          stoneVertices.remove(stoneVertices.size() - 1);
+        }
+      }
+    }
   }
 
 
